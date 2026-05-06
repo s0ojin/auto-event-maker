@@ -129,9 +129,11 @@ function App() {
 				</section>
 
 				<aside className="sidebar-section">
-					<div className="card">
+					<div className="card fill-remaining">
 						<PropertiesPanel
-							hotspot={hotspots.find((h) => h.id === selectedId)}
+							hotspots={hotspots}
+							selectedId={selectedId}
+							setSelectedId={setSelectedId}
 							updateHotspot={updateHotspot}
 							deleteHotspot={deleteHotspot}
 						/>

@@ -16,6 +16,12 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({ hotspots, baseImageUrl, i
 		return <div className="code-panel">Upload an image to generate code.</div>;
 	}
 
+	// Sort hotspots by Y coordinate (top to bottom), then by X coordinate (left to right)
+	const sortedHotspots = [...hotspots].sort((a, b) => {
+		if (a.y !== b.y) return a.y - b.y;
+		return a.x - b.x;
+	});
+
 	let cssStr = `.event-container {
   position: relative;
   max-width: 100%;
@@ -35,11 +41,9 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({ hotspots, baseImageUrl, i
 }
 `;
 
-	let htmlStr = `<div class="event-container">
-  <img src="${baseImageUrl}" alt="Event Promotion">
-`;
-
-	hotspots.forEach((hs, index) => {
+	let htmlStr = `<div class="event-container">\n  <img src="${baseImageUrl}" alt="Event Promotion">\n`;
+ 
+	sortedHotspots.forEach((hs, index) => {
 		const left = ((hs.x / imageWidth) * 100).toFixed(2);
 		const top = ((hs.y / imageHeight) * 100).toFixed(2);
 		const width = ((hs.width / imageWidth) * 100).toFixed(2);
