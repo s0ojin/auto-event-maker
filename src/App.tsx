@@ -3,6 +3,8 @@ import CanvasArea from "./components/CanvasArea";
 import PropertiesPanel from "./components/PropertiesPanel";
 import CodeGenerator from "./components/CodeGenerator";
 import type { Hotspot } from "./types";
+import { supabase } from "./lib/supabase";
+import Auth from "./components/Auth";
 import "./App.css";
 
 function App() {
@@ -10,7 +12,36 @@ function App() {
 	const [hotspots, setHotspots] = useState<Hotspot[]>([]);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [dragCounter, setDragCounter] = useState(0);
+	const [user, setUser] = useState<any>(null);
+	const [showAuth, setShowAuth] = useState(false);
+	const [activeTab, setActiveTab] = useState<"editor" | "templates">("editor");
+	const [pendingTab, setPendingTab] = useState<"editor" | "templates" | null>(null);
 	const isDragging = dragCounter > 0;
+
+	// Listen for auth changes
+	useEffect(() => {
+		supabase.auth.getSession().then(({ data: { session } }) => {
+			const currentUser = session?.user ?? null;
+			setUser(currentUser);
+			if (currentUser && pendingTab) {
+				setActiveTab(pendingTab);
+				setPendingTab(null);
+			}
+		});
+
+		const {
+			data: { subscription },
+		} = supabase.auth.onAuthStateChange((_event, session) => {
+			const currentUser = session?.user ?? null;
+			setUser(currentUser);
+			if (currentUser && pendingTab) {
+				setActiveTab(pendingTab);
+				setPendingTab(null);
+			}
+		});
+
+		return () => subscription.unsubscribe();
+	}, [pendingTab]);
 
 	// Prevent browser from opening dragged files globally
 	useEffect(() => {
@@ -75,6 +106,20 @@ function App() {
 		if (selectedId === id) setSelectedId(null);
 	};
 
+	const handleSignOut = async () => {
+		await supabase.auth.signOut();
+		setActiveTab("editor");
+	};
+
+	const handleTabChange = (tab: "editor" | "templates") => {
+		if (tab === "templates" && !user) {
+			setPendingTab(tab);
+			setShowAuth(true);
+			return;
+		}
+		setActiveTab(tab);
+	};
+
 	return (
 		<div className="layout-container" onDragEnter={onDragEnter} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
 			{isDragging && (
@@ -83,99 +128,138 @@ function App() {
 				</div>
 			)}
 			<header className="header">
-				<div className="logo-group">
-					<h1>Auto Event Maker</h1>
-					<span className="badge">Internal Tool</span>
-				</div>
-				<p className="subtitle">Drag & Drop an image anywhere, draw button areas, and perfectly generate HTML/CSS.</p>
-			</header>
-
-			<main className="main-content">
-				<section className="canvas-section">
-					<div className="upload-bar">
-						{!imageConfig && (
-							<label className="btn-upload">
-								<svg
-									width="20"
-									height="20"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									strokeWidth="2"
-									strokeLinecap="round"
-									strokeLinejoin="round"
-								>
-									<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-									<polyline points="17 8 12 3 7 8" />
-									<line x1="12" y1="3" x2="12" y2="15" />
-								</svg>
-								Upload Image Manually
-								<input type="file" accept="image/png, image/jpeg, image/jpg, image/webp" onChange={handleImageUpload} hidden />
-							</label>
-						)}
-						{imageConfig && (
-							<span className="image-info">
-								{imageConfig.width} x {imageConfig.height}px
-								<label className="btn-upload-small">
-									Change Image
-									<input type="file" accept="image/png, image/jpeg, image/jpg, image/webp" onChange={handleImageUpload} hidden />
-								</label>
-							</span>
-						)}
+				<div className="header-top">
+					<div className="logo-group">
+						<h1>Auto Event Maker</h1>
+						<span className="badge">Internal Tool</span>
 					</div>
-					<div className="canvas-wrapper">
-						{imageConfig ? (
-							<CanvasArea
-								imageUrl={imageConfig.url}
-								hotspots={hotspots}
-								setHotspots={setHotspots}
-								selectedId={selectedId}
-								setSelectedId={setSelectedId}
-							/>
-						) : (
-							<div className="upload-placeholder">
-								<svg
-									width="64"
-									height="64"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									strokeWidth="1"
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									style={{ opacity: 0.5, marginBottom: "1rem" }}
-								>
-									<rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-									<circle cx="8.5" cy="8.5" r="1.5" />
-									<polyline points="21 15 16 10 5 21" />
-								</svg>
-								<p>Drag and drop a promotion image here.</p>
+					<div className="header-actions">
+						{user && (
+							<div className="user-info">
+								<span className="user-email">{user.email}</span>
+								<button className="btn-secondary" onClick={handleSignOut}>
+									Sign Out
+								</button>
 							</div>
 						)}
 					</div>
-				</section>
+				</div>
+				<div className="nav-container">
+					<nav className="tabs">
+						<button className={`tab-btn ${activeTab === "editor" ? "active" : ""}`} onClick={() => handleTabChange("editor")}>
+							Editor
+						</button>
+						<button className={`tab-btn ${activeTab === "templates" ? "active" : ""}`} onClick={() => handleTabChange("templates")}>
+							Templates
+						</button>
+					</nav>
+					<p className="subtitle">
+						{activeTab === "editor"
+							? "Drag & Drop an image anywhere, draw button areas, and perfectly generate HTML/CSS."
+							: "Manage and reuse your saved event templates."}
+					</p>
+				</div>
+			</header>
 
-				<aside className="sidebar-section">
-					<div className="card fill-remaining">
-						<PropertiesPanel
+			{activeTab === "editor" ? (
+				<>
+					<main className="main-content">
+						<section className="canvas-section">
+							<div className="upload-bar">
+								{!imageConfig && (
+									<label className="btn-upload">
+										<svg
+											width="20"
+											height="20"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="2"
+											strokeLinecap="round"
+											strokeLinejoin="round"
+										>
+											<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+											<polyline points="17 8 12 3 7 8" />
+											<line x1="12" y1="3" x2="12" y2="15" />
+										</svg>
+										Upload Image Manually
+										<input type="file" accept="image/png, image/jpeg, image/jpg, image/webp" onChange={handleImageUpload} hidden />
+									</label>
+								)}
+								{imageConfig && (
+									<span className="image-info">
+										{imageConfig.width} x {imageConfig.height}px
+										<label className="btn-upload-small">
+											Change Image
+											<input type="file" accept="image/png, image/jpeg, image/jpg, image/webp" onChange={handleImageUpload} hidden />
+										</label>
+									</span>
+								)}
+							</div>
+							<div className="canvas-wrapper">
+								{imageConfig ? (
+									<CanvasArea
+										imageUrl={imageConfig.url}
+										hotspots={hotspots}
+										setHotspots={setHotspots}
+										selectedId={selectedId}
+										setSelectedId={setSelectedId}
+									/>
+								) : (
+									<div className="upload-placeholder">
+										<svg
+											width="64"
+											height="64"
+											viewBox="0 0 24 24"
+											fill="none"
+											stroke="currentColor"
+											strokeWidth="1"
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											style={{ opacity: 0.5, marginBottom: "1rem" }}
+										>
+											<rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+											<circle cx="8.5" cy="8.5" r="1.5" />
+											<polyline points="21 15 16 10 5 21" />
+										</svg>
+										<p>Drag and drop a promotion image here.</p>
+									</div>
+								)}
+							</div>
+						</section>
+
+						<aside className="sidebar-section">
+							<div className="card fill-remaining">
+								<PropertiesPanel
+									hotspots={hotspots}
+									selectedId={selectedId}
+									setSelectedId={setSelectedId}
+									updateHotspot={updateHotspot}
+									deleteHotspot={deleteHotspot}
+								/>
+							</div>
+						</aside>
+					</main>
+
+					<section className="code-section">
+						<CodeGenerator
 							hotspots={hotspots}
-							selectedId={selectedId}
-							setSelectedId={setSelectedId}
-							updateHotspot={updateHotspot}
-							deleteHotspot={deleteHotspot}
+							baseImageUrl={imageConfig?.url || "YOUR_IMAGE_URL.jpg"}
+							imageWidth={imageConfig?.width || 0}
+							imageHeight={imageConfig?.height || 0}
 						/>
+					</section>
+				</>
+			) : (
+				<div className="templates-placeholder">
+					<div className="card">
+						<h3>Templates Management</h3>
+						<p>Welcome, Admin. This section is under development.</p>
 					</div>
-				</aside>
-			</main>
+				</div>
+			)}
 
-			<section className="code-section">
-				<CodeGenerator
-					hotspots={hotspots}
-					baseImageUrl={imageConfig?.url || "YOUR_IMAGE_URL.jpg"}
-					imageWidth={imageConfig?.width || 0}
-					imageHeight={imageConfig?.height || 0}
-				/>
-			</section>
+			{showAuth && <Auth onClose={() => setShowAuth(false)} />}
 		</div>
 	);
 }
