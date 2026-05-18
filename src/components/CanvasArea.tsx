@@ -69,6 +69,33 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({ imageUrl, hotspots, setHotspots
 		}
 	}, [image]);
 
+	const handleZoom = useCallback((factor: number) => {
+		const stage = stageRef.current;
+		if (!stage) return;
+
+		const oldScale = scale;
+		const center = {
+			x: stage.width() / 2,
+			y: stage.height() / 2,
+		};
+
+		const mousePointTo = {
+			x: (center.x - stage.x()) / oldScale,
+			y: (center.y - stage.y()) / oldScale,
+		};
+
+		const newScale = oldScale * factor;
+		
+		// Min/Max zoom constraints
+		if (newScale < 0.05 || newScale > 10) return;
+
+		setScale(newScale);
+		setStagePos({
+			x: center.x - mousePointTo.x * newScale,
+			y: center.y - mousePointTo.y * newScale,
+		});
+	}, [scale]);
+
 	// Initial Fit
 	useEffect(() => {
 		const updateSize = () => {
@@ -230,26 +257,73 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({ imageUrl, hotspots, setHotspots
 					Zoom: {Math.round(scale * 100)}% | Space+Drag to Pan | Ctrl+Scroll to Zoom
 				</div>
 				
-				<button 
-					onClick={handleResetView}
-					style={{ 
-						background: "var(--accent-color)", 
-						color: "white", 
-						border: "none", 
-						padding: "6px 12px", 
+				<div style={{ display: "flex", gap: "8px" }}>
+					<div style={{ 
+						background: "rgba(0,0,0,0.6)", 
+						display: "flex", 
 						borderRadius: "20px", 
-						fontSize: "0.8rem", 
-						fontWeight: 600, 
-						cursor: "pointer", 
-						boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-						display: "flex",
-						alignItems: "center",
-						gap: "6px"
-					}}
-				>
-					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
-					Reset View
-				</button>
+						backdropFilter: "blur(4px)", 
+						border: "1px solid rgba(255,255,255,0.1)",
+						overflow: "hidden"
+					}}>
+						<button 
+							onClick={() => handleZoom(1.2)}
+							title="Zoom In"
+							style={{ 
+								background: "transparent", 
+								color: "white", 
+								border: "none", 
+								padding: "6px 10px", 
+								cursor: "pointer",
+								display: "flex",
+								alignItems: "center",
+								borderRight: "1px solid rgba(255,255,255,0.1)"
+							}}
+							onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)")}
+							onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+						>
+							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+						</button>
+						<button 
+							onClick={() => handleZoom(0.8)}
+							title="Zoom Out"
+							style={{ 
+								background: "transparent", 
+								color: "white", 
+								border: "none", 
+								padding: "6px 10px", 
+								cursor: "pointer",
+								display: "flex",
+								alignItems: "center"
+							}}
+							onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,255,255,0.1)")}
+							onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+						>
+							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+						</button>
+					</div>
+
+					<button 
+						onClick={handleResetView}
+						style={{ 
+							background: "var(--accent-color)", 
+							color: "white", 
+							border: "none", 
+							padding: "6px 12px", 
+							borderRadius: "20px", 
+							fontSize: "0.8rem", 
+							fontWeight: 600, 
+							cursor: "pointer", 
+							boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+							display: "flex",
+							alignItems: "center",
+							gap: "6px"
+						}}
+					>
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>
+						Reset
+					</button>
+				</div>
 			</div>
 
 			<Stage
