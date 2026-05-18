@@ -234,9 +234,11 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({ imageUrl, hotspots, setHotspots
 					y: normY,
 					width: normWidth,
 					height: normHeight,
+					action_type: "LINK", // Default to simple link
 					href: "https://",
 					target: "_blank",
 					title: "Button",
+					metadata: {},
 				};
 				setHotspots([...hotspots, newHotspot]);
 				setSelectedId(newHotspot.id);

@@ -4,9 +4,11 @@ export interface Hotspot {
   y: number;     // Absolute y in canvas
   width: number; // Absolute width in canvas
   height: number;// Absolute height in canvas
+  action_type: string; // ID of the button template
+  title: string;
   href: string;
   target: string;
-  title: string;
+  metadata: Record<string, any>; // Stores extra fields like couponIds, analytics labels, etc.
 }
 
 export interface BoxRect {
@@ -14,4 +16,18 @@ export interface BoxRect {
   y: number;
   width: number;
   height: number;
+}
+
+export type TemplateCategory = 'LAYOUT' | 'BUTTON';
+
+export interface Template {
+  id: string;
+  name: string;
+  service: string; // e.g., 'HAPPYORDER', 'HAPPYPOINT'
+  category: TemplateCategory;
+  content: string; // HTML or JSP snippet
+  css_content?: string;
+  js_content?: string; // JavaScript logic / functions
+  created_at?: string;
+  updated_at?: string;
 }

@@ -1,5 +1,6 @@
-import React from "react";
-import type { Hotspot } from "../types";
+import React, { useState, useEffect } from "react";
+import { supabase } from "../lib/supabase";
+import type { Hotspot, Template } from "../types";
 
 interface PropertiesPanelProps {
 	hotspots: Hotspot[];
@@ -7,6 +8,7 @@ interface PropertiesPanelProps {
 	setSelectedId: (id: string | null) => void;
 	updateHotspot: (updated: Hotspot) => void;
 	deleteHotspot: (id: string) => void;
+	currentService: string;
 }
 
 const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ 
@@ -14,8 +16,23 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 	selectedId, 
 	setSelectedId, 
 	updateHotspot, 
-	deleteHotspot 
+	deleteHotspot,
+	currentService
 }) => {
+	const [buttonTemplates, setButtonTemplates] = useState<Template[]>([]);
+
+	useEffect(() => {
+		const fetchButtonTemplates = async () => {
+			const { data } = await supabase
+				.from("master_templates")
+				.select("*")
+				.eq("category", "BUTTON")
+				.eq("service", currentService);
+			setButtonTemplates(data || []);
+		};
+		fetchButtonTemplates();
+	}, [currentService]);
+
 	if (hotspots.length === 0) {
 		return (
 			<div className="properties-empty">
@@ -24,11 +41,20 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 		);
 	}
 
-	// Sort hotspots by Y coordinate (top to bottom), then by X coordinate (left to right)
 	const sortedHotspots = [...hotspots].sort((a, b) => {
 		if (a.y !== b.y) return a.y - b.y;
 		return a.x - b.x;
 	});
+
+	const handleMetadataChange = (hotspot: Hotspot, key: string, value: string) => {
+		updateHotspot({
+			...hotspot,
+			metadata: {
+				...hotspot.metadata,
+				[key]: value
+			}
+		});
+	};
 
 	return (
 		<div className="properties-panel">
@@ -45,6 +71,9 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 						>
 							<span className="button-index">#{index + 1}</span>
 							<span className="button-title">{hotspot.title || `Button ${index + 1}`}</span>
+							{hotspot.action_type !== "LINK" && (
+								<span className="action-tag">{hotspot.action_type}</span>
+							)}
 							<svg 
 								className="chevron" 
 								width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
@@ -55,32 +84,60 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 						
 						<div className="accordion-content">
 							<div className="form-group">
-								<label>Link URL</label>
-								<input
-									type="text"
-									value={hotspot.href}
-									onChange={(e) => updateHotspot({ ...hotspot, href: e.target.value })}
-									placeholder="https://..."
-								/>
-							</div>
-
-							<div className="form-group">
-								<label>Target</label>
-								<select value={hotspot.target} onChange={(e) => updateHotspot({ ...hotspot, target: e.target.value })}>
-									<option value="_blank">New Tab (_blank)</option>
-									<option value="_self">Same Window (_self)</option>
+								<label>Action Type (Template)</label>
+								<select 
+									value={hotspot.action_type} 
+									onChange={(e) => updateHotspot({ ...hotspot, action_type: e.target.value })}
+								>
+									<option value="LINK">Standard Link (&lt;a&gt;)</option>
+									{buttonTemplates.map(t => (
+										<option key={t.id} value={t.name}>{t.name}</option>
+									))}
 								</select>
 							</div>
 
 							<div className="form-group">
-								<label>Alt / Title Text</label>
+								<label>Title Text (Alt)</label>
 								<input 
 									type="text" 
 									value={hotspot.title} 
 									onChange={(e) => updateHotspot({ ...hotspot, title: e.target.value })} 
-									placeholder={`Button ${index + 1}`}
+									placeholder="Button Label"
 								/>
 							</div>
+
+							{hotspot.action_type === "LINK" ? (
+								<>
+									<div className="form-group">
+										<label>Link URL</label>
+										<input
+											type="text"
+											value={hotspot.href}
+											onChange={(e) => updateHotspot({ ...hotspot, href: e.target.value })}
+											placeholder="https://..."
+										/>
+									</div>
+									<div className="form-group">
+										<label>Target</label>
+										<select value={hotspot.target} onChange={(e) => updateHotspot({ ...hotspot, target: e.target.value })}>
+											<option value="_blank">New Tab (_blank)</option>
+											<option value="_self">Same Window (_self)</option>
+										</select>
+									</div>
+								</>
+							) : (
+								<div className="metadata-fields">
+									<div className="form-group">
+										<label>Coupon ID / Extra Value</label>
+										<input
+											type="text"
+											value={hotspot.metadata.value || ""}
+											onChange={(e) => handleMetadataChange(hotspot, "value", e.target.value)}
+											placeholder="e.g. CPN_12345"
+										/>
+									</div>
+								</div>
+							)}
 
 							<button className="btn-delete" onClick={() => deleteHotspot(hotspot.id)}>
 								Delete Button

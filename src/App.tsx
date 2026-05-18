@@ -5,6 +5,7 @@ import CodeGenerator from "./components/CodeGenerator";
 import type { Hotspot } from "./types";
 import { supabase } from "./lib/supabase";
 import Auth from "./components/Auth";
+import TemplateManager from "./components/TemplateManager";
 import "./App.css";
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
 	const [showAuth, setShowAuth] = useState(false);
 	const [activeTab, setActiveTab] = useState<"editor" | "templates">("editor");
 	const [pendingTab, setPendingTab] = useState<"editor" | "templates" | null>(null);
+	const [currentService, setCurrentService] = useState<string>("HAPPYORDER");
 	const isDragging = dragCounter > 0;
 
 	// Listen for auth changes
@@ -236,6 +238,7 @@ function App() {
 									setSelectedId={setSelectedId}
 									updateHotspot={updateHotspot}
 									deleteHotspot={deleteHotspot}
+									currentService={currentService}
 								/>
 							</div>
 						</aside>
@@ -247,16 +250,15 @@ function App() {
 							baseImageUrl={imageConfig?.url || "YOUR_IMAGE_URL.jpg"}
 							imageWidth={imageConfig?.width || 0}
 							imageHeight={imageConfig?.height || 0}
+							currentService={currentService}
+							setCurrentService={setCurrentService}
 						/>
 					</section>
 				</>
 			) : (
-				<div className="templates-placeholder">
-					<div className="card">
-						<h3>Templates Management</h3>
-						<p>Welcome, Admin. This section is under development.</p>
-					</div>
-				</div>
+				<main className="main-content single-column">
+					<TemplateManager />
+				</main>
 			)}
 
 			{showAuth && <Auth onClose={() => setShowAuth(false)} />}
