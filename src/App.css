@@ -847,38 +847,197 @@ body {
   background: #ec4899;
 }
 
-/* Code Generator Layout Selector */
-.title-area {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
+/* Code Generator - Unified Header & Gallery */
+.code-panel {
+  padding: 0; /* Remove padding to keep internal parts flush */
+  overflow: hidden;
 }
 
-.layout-select {
+.code-header-unified {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.header-inner {
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+}
+
+.title-group {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(255,255,255,0.05);
-  padding: 4px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--panel-border);
+  min-width: 180px;
 }
 
-.layout-select label {
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-.layout-select select {
-  background: none;
+.title-group h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent-color);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   border: none;
-  color: white;
+  padding: 0;
+}
+
+.layout-gallery-container {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex: 1;
+  overflow: hidden;
+}
+
+.gallery-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.layout-gallery {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 4px 8px;
+  flex: 1;
+}
+
+/* Hide scrollbar for gallery */
+.layout-gallery::-webkit-scrollbar {
+  height: 4px;
+}
+.layout-gallery::-webkit-scrollbar-thumb {
+  background: var(--panel-border);
+  border-radius: 4px;
+}
+
+.layout-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 8px 16px;
+  min-width: 140px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.layout-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.layout-card.active {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.2);
+}
+
+.layout-service-mini {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  font-weight: 800;
+  color: #60a5fa;
+}
+
+.layout-name-mini {
   font-size: 0.85rem;
   font-weight: 600;
-  outline: none;
-  cursor: pointer;
+  color: white;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.no-layouts-hint {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  padding: 8px 0;
+}
+
+/* Multi-section Code Generator */
+.multi-code-sections {
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.code-sub-section {
+  padding: 1.5rem;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 1.25rem;
+}
+
+.section-title h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: white;
+  text-transform: capitalize;
+  border: none;
+  padding: 0;
+}
+
+.badge-outline {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: var(--text-secondary);
+}
+
+.badge-solid {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--accent-color);
+  color: white;
+}
+
+.section-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--panel-border), transparent);
+  margin: 0 1.5rem;
+}
+
+.primary-block {
+  background: rgba(59, 130, 246, 0.1);
+  border-top: 2px solid var(--accent-color);
+  border-radius: 8px 8px 0 0;
+}
+
+.code-grid.two-columns {
+  grid-template-columns: 1fr 1fr;
+}
+
+.code-grid.three-columns {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+@media (max-width: 1200px) {
+  .code-grid.three-columns {
+    grid-template-columns: 1fr;
+  }
+  .code-grid.two-columns {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Properties Panel Action Tag */

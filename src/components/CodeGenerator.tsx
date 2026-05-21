@@ -25,6 +25,9 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 	
 	const [copiedHtml, setCopiedHtml] = useState(false);
 	const [copiedCss, setCopiedCss] = useState(false);
+	const [copiedJs, setCopiedJs] = useState(false);
+	const [copiedDraftHtml, setCopiedDraftHtml] = useState(false);
+	const [copiedDraftCss, setCopiedDraftCss] = useState(false);
 
 	useEffect(() => {
 		const fetchTemplates = async () => {
@@ -60,16 +63,34 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 		});
 	}, [hotspots]);
 
-	const { htmlResult, cssResult, jsResult } = useMemo(() => {
-		if (imageWidth === 0 || imageHeight === 0 || !selectedLayoutId) {
-			return { htmlResult: "", cssResult: "", jsResult: "" };
+	const { buttonsOnlyHtml, buttonsOnlyCss, htmlResult, cssResult, jsResult } = useMemo(() => {
+		if (imageWidth === 0 || imageHeight === 0) {
+			return { buttonsOnlyHtml: "", buttonsOnlyCss: "", htmlResult: "", cssResult: "", jsResult: "" };
+		}
+
+		let buttonsOnlyHtml = "";
+		let buttonsOnlyCss = "";
+		
+		sortedHotspots.forEach((hs, index) => {
+			const bid = index + 1;
+			const left = ((hs.x / imageWidth) * 100).toFixed(2);
+			const top = ((hs.y / imageHeight) * 100).toFixed(2);
+			const width = ((hs.width / imageWidth) * 100).toFixed(2);
+			const height = ((hs.height / imageHeight) * 100).toFixed(2);
+
+			buttonsOnlyHtml += `<a href="${hs.href}" target="${hs.target}" title="${hs.title}" class="event-btn btn-${bid}"></a>\n`;
+			buttonsOnlyCss += `.btn-${bid} { left: ${left}%; top: ${top}%; width: ${width}%; height: ${height}%; }\n`;
+		});
+
+		if (!selectedLayoutId) {
+			return { buttonsOnlyHtml, buttonsOnlyCss, htmlResult: "", cssResult: "", jsResult: "" };
 		}
 
 		const layout = layouts.find(l => l.id === selectedLayoutId);
-		if (!layout) return { htmlResult: "", cssResult: "", jsResult: "" };
+		if (!layout) return { buttonsOnlyHtml, buttonsOnlyCss, htmlResult: "", cssResult: "", jsResult: "" };
 
-		let buttonsHtml = "";
-		let buttonsCss = "";
+		let finalButtonsHtml = "";
+		let finalButtonsCss = "";
 		const jsCollector = new Set<string>();
 
 		if (layout.js_content) jsCollector.add(layout.js_content);
@@ -99,27 +120,37 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 				}
 			}
 
-			buttonsHtml += `  ${btnSnippet}\n`;
-			buttonsCss += `.btn-${bid} { left: ${left}%; top: ${top}%; width: ${width}%; height: ${height}%; }\n`;
+			finalButtonsHtml += `  ${btnSnippet}\n`;
+			finalButtonsCss += `.btn-${bid} { left: ${left}%; top: ${top}%; width: ${width}%; height: ${height}%; }\n`;
 		});
 
 		const finalHtml = layout.content
 			.replace(/{{IMAGE_URL}}/g, baseImageUrl)
-			.replace(/{{BUTTONS}}/g, buttonsHtml.trim());
+			.replace(/{{BUTTONS}}/g, finalButtonsHtml.trim());
 
 		const finalCss = (layout.css_content || "")
-			.replace(/{{BUTTON_STYLES}}/g, buttonsCss.trim());
+			.replace(/{{BUTTON_STYLES}}/g, finalButtonsCss.trim());
 
 		const finalJs = Array.from(jsCollector).join("\n\n");
 
-		return { htmlResult: finalHtml, cssResult: finalCss, jsResult: finalJs };
+		return { buttonsOnlyHtml, buttonsOnlyCss, htmlResult: finalHtml, cssResult: finalCss, jsResult: finalJs };
 	}, [selectedLayoutId, layouts, buttonTemplates, sortedHotspots, baseImageUrl, imageWidth, imageHeight]);
 
 	if (imageWidth === 0 || imageHeight === 0) {
 		return <div className="code-panel">Upload an image to generate code.</div>;
 	}
 
-	const [copiedJs, setCopiedJs] = useState(false);
+	const handleCopyDraftHtml = () => {
+		navigator.clipboard.writeText(buttonsOnlyHtml);
+		setCopiedDraftHtml(true);
+		setTimeout(() => setCopiedDraftHtml(false), 2000);
+	};
+
+	const handleCopyDraftCss = () => {
+		navigator.clipboard.writeText(buttonsOnlyCss);
+		setCopiedDraftCss(true);
+		setTimeout(() => setCopiedDraftCss(false), 2000);
+	};
 
 	const handleCopyHtml = () => {
 		navigator.clipboard.writeText(htmlResult);
@@ -141,39 +172,99 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 
 	return (
 		<div className="code-panel">
-			<div className="code-header">
-// ... (title parts) ...
+			<div className="code-header-unified">
+				<div className="header-inner">
+					<div className="title-group">
+						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+						<h3>Live Generator</h3>
+					</div>
+					<div className="layout-gallery-container">
+						<span className="gallery-label">Apply JSP Layout:</span>
+						<div className="layout-gallery">
+							{layouts.map(l => (
+								<button 
+									key={l.id} 
+									className={`layout-card ${selectedLayoutId === l.id ? "active" : ""}`}
+									onClick={() => setSelectedLayoutId(l.id)}
+								>
+									<div className="layout-service-mini">{l.service}</div>
+									<div className="layout-name-mini">{l.name}</div>
+								</button>
+							))}
+							{layouts.length === 0 && (
+								<div className="no-layouts-hint">No layouts found. Create one in Templates tab!</div>
+							)}
+						</div>
+					</div>
+				</div>
 			</div>
 			
-			<div className="code-grid three-columns">
-				<div className="code-block">
-					<div className="code-header">
-						<h4>Final Structure</h4>
-						<button className="btn-copy" onClick={handleCopyHtml} disabled={!htmlResult}>
-							{copiedHtml ? "Copied!" : "Copy Result"}
-						</button>
+			<div className="multi-code-sections">
+				<div className="code-sub-section">
+					<div className="section-title">
+						<span className="badge-outline">Draft</span>
+						<h4>Real-time Button Snippets</h4>
 					</div>
-					<textarea readOnly value={htmlResult} placeholder="Select a layout and draw buttons..." />
+					<div className="code-grid two-columns">
+						<div className="code-block">
+							<div className="code-header">
+								<h5>Button HTML Only</h5>
+								<button className="btn-copy" onClick={handleCopyDraftHtml}>
+									{copiedDraftHtml ? "Copied!" : "Copy"}
+								</button>
+							</div>
+							<textarea readOnly value={buttonsOnlyHtml} rows={6} placeholder="Draw buttons to see live snippets..." />
+						</div>
+						<div className="code-block">
+							<div className="code-header">
+								<h5>Button CSS Only</h5>
+								<button className="btn-copy" onClick={handleCopyDraftCss}>
+									{copiedDraftCss ? "Copied!" : "Copy"}
+								</button>
+							</div>
+							<textarea readOnly value={buttonsOnlyCss} rows={6} placeholder="CSS positions will appear here..." />
+						</div>
+					</div>
 				</div>
 
-				<div className="code-block">
-					<div className="code-header">
-						<h4>CSS Styles</h4>
-						<button className="btn-copy" onClick={handleCopyCss} disabled={!cssResult}>
-							{copiedCss ? "Copied!" : "Copy CSS"}
-						</button>
-					</div>
-					<textarea readOnly value={cssResult} placeholder="Styles will appear here..." />
-				</div>
+				<div className="section-divider"></div>
 
-				<div className="code-block">
-					<div className="code-header">
-						<h4>JavaScript</h4>
-						<button className="btn-copy" onClick={handleCopyJs} disabled={!jsResult}>
-							{copiedJs ? "Copied!" : "Copy JS"}
-						</button>
+				<div className="code-sub-section">
+					<div className="section-title">
+						<span className="badge-solid">Final</span>
+						<h4>Combined Layout Output (JSP)</h4>
 					</div>
-					<textarea readOnly value={jsResult} placeholder="JavaScript logic will appear here..." />
+					<div className="code-grid three-columns">
+						<div className="code-block">
+							<div className="code-header primary-block">
+								<h5>Final Structure</h5>
+								<button className="btn-copy" onClick={handleCopyHtml} disabled={!htmlResult}>
+									{copiedHtml ? "Copied!" : "Copy"}
+								</button>
+							</div>
+							<textarea readOnly value={htmlResult} placeholder="Combined JSP will be generated here..." />
+						</div>
+
+						<div className="code-block">
+							<div className="code-header">
+								<h5>Global Styles</h5>
+								<button className="btn-copy" onClick={handleCopyCss} disabled={!cssResult}>
+									{copiedCss ? "Copied!" : "Copy"}
+								</button>
+							</div>
+							<textarea readOnly value={cssResult} placeholder="Final CSS combined..." />
+						</div>
+
+						<div className="code-block">
+							<div className="code-header">
+								<h5>JavaScript</h5>
+								<button className="btn-copy" onClick={handleCopyJs} disabled={!jsResult}>
+									{copiedJs ? "Copied!" : "Copy"}
+								</button>
+							</div>
+							<textarea readOnly value={jsResult} placeholder="Aggregated JS logic..." />
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>
