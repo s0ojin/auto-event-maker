@@ -70,30 +70,12 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 
 		let buttonsOnlyHtml = "";
 		let buttonsOnlyCss = "";
-
-		sortedHotspots.forEach((hs, index) => {
-			const bid = index + 1;
-			const left = ((hs.x / imageWidth) * 100).toFixed(2);
-			const top = ((hs.y / imageHeight) * 100).toFixed(2);
-			const width = ((hs.width / imageWidth) * 100).toFixed(2);
-			const height = ((hs.height / imageHeight) * 100).toFixed(2);
-
-			buttonsOnlyHtml += `<a href="${hs.href}" target="${hs.target}" title="${hs.title}" class="event-btn btn-${bid}"></a>\n`;
-			buttonsOnlyCss += `.btn-${bid} { left: ${left}%; top: ${top}%; width: ${width}%; height: ${height}%; position:absolute; }\n`;
-		});
-
-		if (!selectedLayoutId) {
-			return { buttonsOnlyHtml, buttonsOnlyCss, htmlResult: "", cssResult: "", jsResult: "" };
-		}
-
-		const layout = layouts.find((l) => l.id === selectedLayoutId);
-		if (!layout) return { buttonsOnlyHtml, buttonsOnlyCss, htmlResult: "", cssResult: "", jsResult: "" };
-
 		let finalButtonsHtml = "";
 		let finalButtonsCss = "";
 		const jsCollector = new Set<string>();
 
-		if (layout.js_content) jsCollector.add(layout.js_content);
+		const layout = selectedLayoutId ? layouts.find((l) => l.id === selectedLayoutId) : null;
+		if (layout && layout.js_content) jsCollector.add(layout.js_content);
 
 		sortedHotspots.forEach((hs, index) => {
 			const bid = index + 1;
@@ -120,9 +102,16 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 				}
 			}
 
+			buttonsOnlyHtml += `${btnSnippet}\n`;
+			buttonsOnlyCss += `.btn-${bid} { left: ${left}%; top: ${top}%; width: ${width}%; height: ${height}%; position:absolute; }\n`;
+
 			finalButtonsHtml += `  ${btnSnippet}\n`;
 			finalButtonsCss += `.btn-${bid} { left: ${left}%; top: ${top}%; width: ${width}%; height: ${height}%; }\n`;
 		});
+
+		if (!layout) {
+			return { buttonsOnlyHtml, buttonsOnlyCss, htmlResult: "", cssResult: "", jsResult: "" };
+		}
 
 		let finalHtml = layout.content.replace(/{{IMAGE_URL}}/gi, baseImageUrl);
 		const buttonsPlaceholderRegex = /{{BUTTONS}}/gi;
@@ -187,12 +176,6 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 		navigator.clipboard.writeText(htmlResult);
 		setCopiedHtml(true);
 		setTimeout(() => setCopiedHtml(false), 2000);
-	};
-
-	const handleCopyCss = () => {
-		navigator.clipboard.writeText(`<style>\n${cssResult}\n</style>`);
-		setCopiedCss(true);
-		setTimeout(() => setCopiedCss(false), 2000);
 	};
 
 	const handleCopyJs = () => {
@@ -266,11 +249,7 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 							<textarea readOnly value={buttonsOnlyCss} rows={6} placeholder="CSS positions will appear here..." />
 						</div>
 					</div>
-				</div>
 
-				<div className="section-divider"></div>
-
-				<div className="code-sub-section">
 					<div className="section-title">
 						<span className="badge-solid">Final</span>
 						<h4>Combined Layout Output (JSP)</h4>
@@ -284,16 +263,6 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 								</button>
 							</div>
 							<textarea readOnly value={htmlResult} placeholder="Combined JSP will be generated here..." />
-						</div>
-
-						<div className="code-block">
-							<div className="code-header">
-								<h5>Global Styles</h5>
-								<button className="btn-copy" onClick={handleCopyCss} disabled={!cssResult}>
-									{copiedCss ? "Copied!" : "Copy"}
-								</button>
-							</div>
-							<textarea readOnly value={cssResult} placeholder="Final CSS combined..." />
 						</div>
 
 						<div className="code-block">
