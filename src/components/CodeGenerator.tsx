@@ -11,18 +11,18 @@ interface CodeGeneratorProps {
 	setCurrentService: (service: string) => void;
 }
 
-const CodeGenerator: React.FC<CodeGeneratorProps> = ({ 
-	hotspots, 
-	baseImageUrl, 
-	imageWidth, 
+const CodeGenerator: React.FC<CodeGeneratorProps> = ({
+	hotspots,
+	baseImageUrl,
+	imageWidth,
 	imageHeight,
 	currentService,
-	setCurrentService
+	setCurrentService,
 }) => {
 	const [layouts, setLayouts] = useState<Template[]>([]);
 	const [buttonTemplates, setButtonTemplates] = useState<Template[]>([]);
 	const [selectedLayoutId, setSelectedLayoutId] = useState<string>("");
-	
+
 	const [copiedHtml, setCopiedHtml] = useState(false);
 	const [copiedCss, setCopiedCss] = useState(false);
 	const [copiedJs, setCopiedJs] = useState(false);
@@ -33,13 +33,13 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 		const fetchTemplates = async () => {
 			const { data } = await supabase.from("master_templates").select("*");
 			if (data) {
-				const l = data.filter(t => t.category === "LAYOUT");
-				const b = data.filter(t => t.category === "BUTTON");
+				const l = data.filter((t) => t.category === "LAYOUT");
+				const b = data.filter((t) => t.category === "BUTTON");
 				setLayouts(l);
 				setButtonTemplates(b);
-				
+
 				// Try to find a layout that matches currentService initially
-				const defaultLayout = l.find(tpl => tpl.service === currentService) || l[0];
+				const defaultLayout = l.find((tpl) => tpl.service === currentService) || l[0];
 				if (defaultLayout && !selectedLayoutId) {
 					setSelectedLayoutId(defaultLayout.id);
 				}
@@ -47,10 +47,10 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 		};
 		fetchTemplates();
 	}, []);
- 
+
 	// Sync service when layout changes
 	useEffect(() => {
-		const layout = layouts.find(l => l.id === selectedLayoutId);
+		const layout = layouts.find((l) => l.id === selectedLayoutId);
 		if (layout && layout.service !== currentService) {
 			setCurrentService(layout.service);
 		}
@@ -70,7 +70,7 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 
 		let buttonsOnlyHtml = "";
 		let buttonsOnlyCss = "";
-		
+
 		sortedHotspots.forEach((hs, index) => {
 			const bid = index + 1;
 			const left = ((hs.x / imageWidth) * 100).toFixed(2);
@@ -79,14 +79,14 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 			const height = ((hs.height / imageHeight) * 100).toFixed(2);
 
 			buttonsOnlyHtml += `<a href="${hs.href}" target="${hs.target}" title="${hs.title}" class="event-btn btn-${bid}"></a>\n`;
-			buttonsOnlyCss += `.btn-${bid} { left: ${left}%; top: ${top}%; width: ${width}%; height: ${height}%; }\n`;
+			buttonsOnlyCss += `.btn-${bid} { left: ${left}%; top: ${top}%; width: ${width}%; height: ${height}%; position:absolute; }\n`;
 		});
 
 		if (!selectedLayoutId) {
 			return { buttonsOnlyHtml, buttonsOnlyCss, htmlResult: "", cssResult: "", jsResult: "" };
 		}
 
-		const layout = layouts.find(l => l.id === selectedLayoutId);
+		const layout = layouts.find((l) => l.id === selectedLayoutId);
 		if (!layout) return { buttonsOnlyHtml, buttonsOnlyCss, htmlResult: "", cssResult: "", jsResult: "" };
 
 		let finalButtonsHtml = "";
@@ -106,14 +106,14 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 			if (hs.action_type === "LINK") {
 				btnSnippet = `<a href="${hs.href}" target="${hs.target}" title="${hs.title}" class="event-btn btn-${bid}"></a>`;
 			} else {
-				const tpl = buttonTemplates.find(t => t.name === hs.action_type);
+				const tpl = buttonTemplates.find((t) => t.name === hs.action_type);
 				if (tpl) {
 					btnSnippet = tpl.content
 						.replace(/{{HREF}}/g, hs.href)
 						.replace(/{{TITLE}}/g, hs.title)
 						.replace(/{{ID}}/g, bid.toString())
 						.replace(/{{METADATA\.value}}/g, hs.metadata?.value || "");
-					
+
 					if (tpl.js_content) jsCollector.add(tpl.js_content);
 				} else {
 					btnSnippet = `<!-- Template ${hs.action_type} not found -->`;
@@ -124,14 +124,45 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 			finalButtonsCss += `.btn-${bid} { left: ${left}%; top: ${top}%; width: ${width}%; height: ${height}%; }\n`;
 		});
 
-		const finalHtml = layout.content
-			.replace(/{{IMAGE_URL}}/g, baseImageUrl)
-			.replace(/{{BUTTONS}}/g, finalButtonsHtml.trim());
+		let finalHtml = layout.content.replace(/{{IMAGE_URL}}/gi, baseImageUrl);
+		const buttonsPlaceholderRegex = /{{BUTTONS}}/gi;
 
-		const finalCss = (layout.css_content || "")
-			.replace(/{{BUTTON_STYLES}}/g, finalButtonsCss.trim());
+		if (buttonsPlaceholderRegex.test(finalHtml)) {
+			finalHtml = finalHtml.replace(buttonsPlaceholderRegex, finalButtonsHtml.trim());
+		} else {
+			const lastDivIndex = finalHtml.lastIndexOf("</div>");
+			if (lastDivIndex !== -1) {
+				finalHtml = finalHtml.substring(0, lastDivIndex) + `\n${finalButtonsHtml}` + finalHtml.substring(lastDivIndex);
+			} else {
+				finalHtml = finalHtml + `\n${finalButtonsHtml.trim()}`;
+			}
+		}
+
+		let finalCss = layout.css_content || "";
+		const cssPlaceholderRegex = /{{BUTTON_STYLES}}/gi;
+		const stylesPlaceholderRegex = /{{styles}}/gi;
+
+		if (cssPlaceholderRegex.test(finalCss)) {
+			finalCss = finalCss.replace(cssPlaceholderRegex, finalButtonsCss.trim());
+		} else if (stylesPlaceholderRegex.test(finalCss)) {
+			finalCss = finalCss.replace(stylesPlaceholderRegex, finalButtonsCss.trim());
+		} else {
+			finalCss = finalCss.trim() + `\n\n/* Automatically injected button styles */\n${finalButtonsCss.trim()}`;
+		}
 
 		const finalJs = Array.from(jsCollector).join("\n\n");
+
+		// Replace styles and javascripts inside finalHtml if placeholders exist
+		if (stylesPlaceholderRegex.test(finalHtml)) {
+			finalHtml = finalHtml.replace(stylesPlaceholderRegex, finalCss.trim());
+		} else if (cssPlaceholderRegex.test(finalHtml)) {
+			finalHtml = finalHtml.replace(cssPlaceholderRegex, finalCss.trim());
+		}
+
+		const jsPlaceholderRegex = /{{javascripts}}/gi;
+		if (jsPlaceholderRegex.test(finalHtml)) {
+			finalHtml = finalHtml.replace(jsPlaceholderRegex, finalJs.trim());
+		}
 
 		return { buttonsOnlyHtml, buttonsOnlyCss, htmlResult: finalHtml, cssResult: finalCss, jsResult: finalJs };
 	}, [selectedLayoutId, layouts, buttonTemplates, sortedHotspots, baseImageUrl, imageWidth, imageHeight]);
@@ -175,15 +206,27 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 			<div className="code-header-unified">
 				<div className="header-inner">
 					<div className="title-group">
-						<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+						<svg
+							width="20"
+							height="20"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="2"
+							strokeLinecap="round"
+							strokeLinejoin="round"
+						>
+							<polyline points="16 18 22 12 16 6" />
+							<polyline points="8 6 2 12 8 18" />
+						</svg>
 						<h3>Live Generator</h3>
 					</div>
 					<div className="layout-gallery-container">
 						<span className="gallery-label">Apply JSP Layout:</span>
 						<div className="layout-gallery">
-							{layouts.map(l => (
-								<button 
-									key={l.id} 
+							{layouts.map((l) => (
+								<button
+									key={l.id}
 									className={`layout-card ${selectedLayoutId === l.id ? "active" : ""}`}
 									onClick={() => setSelectedLayoutId(l.id)}
 								>
@@ -191,14 +234,12 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 									<div className="layout-name-mini">{l.name}</div>
 								</button>
 							))}
-							{layouts.length === 0 && (
-								<div className="no-layouts-hint">No layouts found. Create one in Templates tab!</div>
-							)}
+							{layouts.length === 0 && <div className="no-layouts-hint">No layouts found. Create one in Templates tab!</div>}
 						</div>
 					</div>
 				</div>
 			</div>
-			
+
 			<div className="multi-code-sections">
 				<div className="code-sub-section">
 					<div className="section-title">

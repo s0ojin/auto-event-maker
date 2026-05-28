@@ -184,7 +184,7 @@ const TemplateManager: React.FC = () => {
 							{formData.category === "LAYOUT" ? "JSP/HTML Structure" : "Button HTML Snippet"} 
 							<span className="label-hint">
 								{formData.category === "LAYOUT" 
-									? " (Use: {{IMAGE_URL}}, {{BUTTONS}})" 
+									? " (Use: {{IMAGE_URL}}, {{buttons}}, {{styles}}, {{javascripts}})" 
 									: " (Use: {{HREF}}, {{TITLE}}, {{METADATA.key}})"}
 							</span>
 						</label>
@@ -202,7 +202,7 @@ const TemplateManager: React.FC = () => {
 
 					{formData.category === "LAYOUT" && (
 						<div className="form-group">
-							<label>Global CSS (Optional) <span className="label-hint">(Use: {"{{BUTTON_STYLES}}"})</span></label>
+							<label>Global CSS (Optional) <span className="label-hint">{"(Use: {{styles}} or {{BUTTON_STYLES}})"}</span></label>
 							<textarea
 								name="css_content"
 								rows={4}
