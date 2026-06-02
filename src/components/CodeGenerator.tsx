@@ -76,6 +76,8 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 		const layout = selectedLayoutId ? layouts.find((l) => l.id === selectedLayoutId) : null;
 		if (layout && layout.js_content) jsCollector.add(layout.js_content);
 
+		let couponCount = 0;
+
 		sortedHotspots.forEach((hs, index) => {
 			const bid = index + 1;
 			const left = ((hs.x / imageWidth) * 100).toFixed(2);
@@ -83,17 +85,25 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 			const width = ((hs.width / imageWidth) * 100).toFixed(2);
 			const height = ((hs.height / imageHeight) * 100).toFixed(2);
 
+			const isCoupon = hs.action_type && hs.action_type.toUpperCase().includes("COUPON");
+			if (isCoupon) {
+				couponCount++;
+			}
+
 			let btnSnippet = "";
 			if (hs.action_type === "LINK") {
 				btnSnippet = `<a href="${hs.href}" target="${hs.target}" title="${hs.title}" class="event-btn btn-${bid}"></a>`;
 			} else {
 				const tpl = buttonTemplates.find((t) => t.name === hs.action_type);
 				if (tpl) {
+					const couponIdxStr = couponCount.toString().padStart(2, "0");
 					btnSnippet = tpl.content
 						.replace(/{{HREF}}/g, hs.href)
 						.replace(/{{TITLE}}/g, hs.title)
 						.replace(/{{ID}}/g, bid.toString())
-						.replace(/{{METADATA\.value}}/g, hs.metadata?.value || "");
+						.replace(/{{METADATA\.value}}/g, hs.metadata?.value || "")
+						.replace(/{{COUPON_INDEX}}/g, couponIdxStr)
+						.replace(/BTN-01/g, `BTN-${couponIdxStr}`);
 
 					if (tpl.js_content) jsCollector.add(tpl.js_content);
 				} else {

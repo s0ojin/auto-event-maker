@@ -291,7 +291,7 @@ const TemplateManager: React.FC = () => {
 							<div className="form-group">
 								<label>
 									onClick 액션 실행코드
-									<span className="label-hint">{" (Tip: {{HREF}}, {{METADATA.key}}, {{ID}} 사용 가능)"}</span>
+									<span className="label-hint">{" (Tip: {{HREF}}, {{METADATA.key}}, {{ID}}, {{COUPON_INDEX}} 사용 가능)"}</span>
 								</label>
 								<input
 									type="text"
