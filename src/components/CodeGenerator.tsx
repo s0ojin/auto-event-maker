@@ -115,7 +115,7 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 			buttonsOnlyCss += `.btn-${bid} { left: ${left}%; top: ${top}%; width: ${width}%; height: ${height}%; position:absolute; }\n`;
 
 			finalButtonsHtml += `  ${btnSnippet}\n`;
-			finalButtonsCss += `.btn-${bid} { left: ${left}%; top: ${top}%; width: ${width}%; height: ${height}%; }\n`;
+			finalButtonsCss += `.btn-${bid} { left: ${left}%; top: ${top}%; width: ${width}%; height: ${height}%; position:absolute; }\n`;
 		});
 
 		if (!layout) {
