@@ -24,7 +24,6 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 	const [selectedLayoutId, setSelectedLayoutId] = useState<string>("");
 
 	const [copiedHtml, setCopiedHtml] = useState(false);
-	const [copiedCss, setCopiedCss] = useState(false);
 	const [copiedJs, setCopiedJs] = useState(false);
 	const [copiedDraftHtml, setCopiedDraftHtml] = useState(false);
 	const [copiedDraftCss, setCopiedDraftCss] = useState(false);
@@ -63,7 +62,7 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 		});
 	}, [hotspots]);
 
-	const { buttonsOnlyHtml, buttonsOnlyCss, htmlResult, cssResult, jsResult } = useMemo(() => {
+	const { buttonsOnlyHtml, buttonsOnlyCss, htmlResult, jsResult } = useMemo(() => {
 		if (imageWidth === 0 || imageHeight === 0) {
 			return { buttonsOnlyHtml: "", buttonsOnlyCss: "", htmlResult: "", cssResult: "", jsResult: "" };
 		}
