@@ -9,7 +9,7 @@ import TemplateManager from "./components/TemplateManager";
 import "./App.css";
 
 function App() {
-	const [imageConfig, setImageConfig] = useState<{ url: string; width: number; height: number } | null>(null);
+	const [imageConfig, setImageConfig] = useState<{ url: string; name: string; width: number; height: number } | null>(null);
 	const [hotspots, setHotspots] = useState<Hotspot[]>([]);
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const [dragCounter, setDragCounter] = useState(0);
@@ -64,6 +64,7 @@ function App() {
 			img.onload = () => {
 				setImageConfig({
 					url: objectUrl,
+					name: file.name,
 					width: img.naturalWidth,
 					height: img.naturalHeight,
 				});
@@ -248,6 +249,7 @@ function App() {
 						<CodeGenerator
 							hotspots={hotspots}
 							baseImageUrl={imageConfig?.url || "YOUR_IMAGE_URL.jpg"}
+							imageName={imageConfig?.name || ""}
 							imageWidth={imageConfig?.width || 0}
 							imageHeight={imageConfig?.height || 0}
 							currentService={currentService}

@@ -5,6 +5,7 @@ import type { Hotspot, Template } from "../types";
 interface CodeGeneratorProps {
 	hotspots: Hotspot[];
 	baseImageUrl: string;
+	imageName?: string;
 	imageWidth: number;
 	imageHeight: number;
 	currentService: string;
@@ -14,6 +15,7 @@ interface CodeGeneratorProps {
 const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 	hotspots,
 	baseImageUrl,
+	imageName = "",
 	imageWidth,
 	imageHeight,
 	currentService,
@@ -122,7 +124,9 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 			return { buttonsOnlyHtml, buttonsOnlyCss, htmlResult: "", cssResult: "", jsResult: "" };
 		}
 
-		let finalHtml = layout.content.replace(/{{IMAGE_URL}}/gi, baseImageUrl);
+		let finalHtml = layout.content
+			.replace(/{{IMAGE_URL}}/gi, baseImageUrl)
+			.replace(/{{IMAGE_NAME}}/gi, imageName);
 		const buttonsPlaceholderRegex = /{{BUTTONS}}/gi;
 
 		if (buttonsPlaceholderRegex.test(finalHtml)) {
@@ -163,7 +167,7 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 		}
 
 		return { buttonsOnlyHtml, buttonsOnlyCss, htmlResult: finalHtml, cssResult: finalCss, jsResult: finalJs };
-	}, [selectedLayoutId, layouts, buttonTemplates, sortedHotspots, baseImageUrl, imageWidth, imageHeight]);
+	}, [selectedLayoutId, layouts, buttonTemplates, sortedHotspots, baseImageUrl, imageName, imageWidth, imageHeight]);
 
 	if (imageWidth === 0 || imageHeight === 0) {
 		return <div className="code-panel">Upload an image to generate code.</div>;

@@ -223,12 +223,12 @@ const TemplateManager: React.FC = () => {
 							<div className="form-group">
 								<label>
 									JSP/HTML Structure
-									<span className="label-hint">{" (Use: {{IMAGE_URL}}, {{buttons}}, {{styles}}, {{javascripts}})"}</span>
+									<span className="label-hint">{" (Use: {{IMAGE_URL}}, {{IMAGE_NAME}}, {{buttons}}, {{styles}}, {{javascripts}})"}</span>
 								</label>
 								<textarea
 									name="content"
 									rows={8}
-									placeholder={'<%@ page ... %>\n<div class="event-wrap">\n  <img src="{{IMAGE_URL}}">\n  {{BUTTONS}}\n</div>'}
+									placeholder={'<%@ page ... %>\n<div class="event-wrap">\n  <img src="{{IMAGE_URL}}" data-name="{{IMAGE_NAME}}">\n  {{BUTTONS}}\n</div>'}
 									value={formData.content || ""}
 									onChange={handleInputChange}
 									required
