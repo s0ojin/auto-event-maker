@@ -87,7 +87,7 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({ imageUrl, hotspots, setHotspots
 		const newScale = oldScale * factor;
 		
 		// Min/Max zoom constraints
-		if (newScale < 0.05 || newScale > 10) return;
+		if (newScale < 0.005 || newScale > 10) return;
 
 		setScale(newScale);
 		setStagePos({
@@ -159,7 +159,7 @@ const CanvasArea: React.FC<CanvasAreaProps> = ({ imageUrl, hotspots, setHotspots
 			const newScale = direction > 0 ? oldScale * scaleBy : oldScale / scaleBy;
 			
 			// Min/Max zoom constraints
-			if (newScale < 0.05 || newScale > 10) return;
+			if (newScale < 0.005 || newScale > 10) return;
 
 			setScale(newScale);
 			setStagePos({
