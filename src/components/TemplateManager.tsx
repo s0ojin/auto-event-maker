@@ -28,7 +28,18 @@ const TemplateManager: React.FC = () => {
 			const { data, error } = await supabase.from("master_templates").select("*").order("created_at", { ascending: false });
 
 			if (error) throw error;
-			setTemplates(data || []);
+			
+			const mapped = (data || []).map((t) => {
+				if (t.category === "BUTTON" && t.name.startsWith("[CUSTOM] ")) {
+					return {
+						...t,
+						category: "CUSTOM",
+						name: t.name.slice(9),
+					};
+				}
+				return t;
+			});
+			setTemplates(mapped);
 		} catch (err: any) {
 			console.error("Error fetching templates:", err.message);
 			alert("Failed to load templates.");
@@ -59,11 +70,11 @@ const TemplateManager: React.FC = () => {
 			}
 
 			const payload = {
-				name: finalName,
+				name: formData.category === "CUSTOM" ? `[CUSTOM] ${formData.name}` : finalName,
 				service: formData.service,
-				category: formData.category,
+				category: formData.category === "CUSTOM" ? "BUTTON" : formData.category,
 				content: finalContent,
-				css_content: formData.category === "LAYOUT" ? formData.css_content : "",
+				css_content: formData.category === "BUTTON" ? "" : (formData.css_content || ""),
 				js_content: formData.js_content || "",
 			};
 
@@ -172,6 +183,7 @@ const TemplateManager: React.FC = () => {
 
 	const layouts = templates.filter((t) => t.category?.toUpperCase() === "LAYOUT");
 	const buttons = templates.filter((t) => t.category?.toUpperCase() === "BUTTON");
+	const customs = templates.filter((t) => t.category?.toUpperCase() === "CUSTOM");
 
 	return (
 		<div className="template-manager">
@@ -193,11 +205,18 @@ const TemplateManager: React.FC = () => {
 						>
 							BUTTON
 						</button>
+						<button
+							type="button"
+							className={`mini-tab ${formData.category === "CUSTOM" ? "active" : ""}`}
+							onClick={() => setFormData((p) => ({ ...p, category: "CUSTOM" }))}
+						>
+							CUSTOM (HTML)
+						</button>
 					</div>
 				</div>
 
 				<form onSubmit={handleSubmit} className="template-form">
-					{formData.category === "LAYOUT" ? (
+					{formData.category === "LAYOUT" && (
 						<>
 							<div className="form-row">
 								<div className="form-group">
@@ -256,7 +275,70 @@ const TemplateManager: React.FC = () => {
 								/>
 							</div>
 						</>
-					) : (
+					)}
+
+					{formData.category === "CUSTOM" && (
+						<>
+							<div className="form-row">
+								<div className="form-group">
+									<label>Template Name</label>
+									<input
+										type="text"
+										name="name"
+										placeholder="e.g. YouTube Embed, Kakao Map"
+										value={formData.name || ""}
+										onChange={handleInputChange}
+										required
+									/>
+								</div>
+								<div className="form-group">
+									<label>Service Type</label>
+									<select name="service" value={formData.service} onChange={handleInputChange}>
+										<option value="HAPPYPOINT">해피포인트 (HAPPY POINT)</option>
+										<option value="HAPPYORDER">해피오더 (HAPPY ORDER)</option>
+									</select>
+								</div>
+							</div>
+
+							<div className="form-group">
+								<label>
+									HTML Structure / Snippet
+									<span className="label-hint">{" (Use: {{ID}}, {{HREF}}, {{TITLE}}, {{METADATA.key_name}}, {{COUPON_INDEX}})"}</span>
+								</label>
+								<textarea
+									name="content"
+									rows={8}
+									placeholder={'<div class="event-custom custom_html-{{ID}}">\n  <iframe src="https://www.youtube.com/embed/{{METADATA.youtube_id}}" width="100%" height="100%" frameborder="0"></iframe>\n</div>'}
+									value={formData.content || ""}
+									onChange={handleInputChange}
+									required
+								/>
+							</div>
+
+							<div className="form-group">
+								<label>
+									Global/Component CSS (Optional) <span className="label-hint">{"(Use: {{ID}} or {{COUPON_INDEX}})"}</span>
+								</label>
+								<textarea name="css_content" rows={4} placeholder={'.custom_html-{{ID}} iframe {\n  border-radius: 8px;\n}'} value={formData.css_content || ""} onChange={handleInputChange} />
+							</div>
+
+							<div className="form-group">
+								<label>
+									JavaScript Logic (Optional)
+									<span className="label-hint"> (Functions / Initialization scripts)</span>
+								</label>
+								<textarea
+									name="js_content"
+									rows={4}
+									placeholder="console.log('Custom HTML component loaded');"
+									value={formData.js_content || ""}
+									onChange={handleInputChange}
+								/>
+							</div>
+						</>
+					)}
+
+					{formData.category === "BUTTON" && (
 						<>
 							<div className="form-row">
 								<div className="form-group">
@@ -339,7 +421,7 @@ const TemplateManager: React.FC = () => {
 				</form>
 			</div>
 
-			<div className="templates-list-section" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem" }}>
+			<div className="templates-list-section" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "1.5rem" }}>
 				<div>
 					<h3>Layout Templates ({layouts.length})</h3>
 					{loading ? (
@@ -415,6 +497,67 @@ const TemplateManager: React.FC = () => {
 										<div className="template-card-header">
 											<div>
 												<span className={`category-badge button`}>BUTTON</span>
+												<span className={`service-badge ${t.service.toLowerCase()}`}>{t.service}</span>
+												<h4>{t.name}</h4>
+											</div>
+											<div className="card-actions">
+												<button className="btn-icon" onClick={() => handleEdit(t)} title="Edit">
+													<svg
+														width="16"
+														height="16"
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														strokeWidth="2"
+														strokeLinecap="round"
+														strokeLinejoin="round"
+													>
+														<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+														<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+													</svg>
+												</button>
+												<button className="btn-icon delete" onClick={() => handleDelete(t.id)} title="Delete">
+													<svg
+														width="16"
+														height="16"
+														viewBox="0 0 24 24"
+														fill="none"
+														stroke="currentColor"
+														strokeWidth="2"
+														strokeLinecap="round"
+														strokeLinejoin="round"
+													>
+														<polyline points="3 6 5 6 21 6" />
+														<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+														<line x1="10" y1="11" x2="10" y2="17" />
+														<line x1="14" y1="11" x2="14" y2="17" />
+													</svg>
+												</button>
+											</div>
+										</div>
+										<div className="template-preview">
+											<code style={{ whiteSpace: "pre-wrap", maxHeight: "100px", display: "block", overflow: "hidden" }}>{t.content}</code>
+										</div>
+									</div>
+								))
+							)}
+						</div>
+					)}
+				</div>
+				<div>
+					<h3>Custom HTML Templates ({customs.length})</h3>
+					{loading ? (
+						<p>Loading...</p>
+					) : (
+						<div className="templates-grid" style={{ gridTemplateColumns: "1fr" }}>
+							{customs.length === 0 ? (
+								<div className="empty-state">No custom templates found.</div>
+							) : (
+								customs.map((t) => (
+									<div key={t.id} className="template-card card" style={{ borderColor: "#a855f7" }}>
+										<div className="template-card-header">
+											<div>
+												<span className={`category-badge`}>CUSTOM</span>
 												<span className={`service-badge ${t.service.toLowerCase()}`}>{t.service}</span>
 												<h4>{t.name}</h4>
 											</div>

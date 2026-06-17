@@ -34,8 +34,18 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 		const fetchTemplates = async () => {
 			const { data } = await supabase.from("master_templates").select("*");
 			if (data) {
-				const l = data.filter((t) => t.category === "LAYOUT");
-				const b = data.filter((t) => t.category === "BUTTON");
+				const mapped = data.map((t) => {
+					if (t.category === "BUTTON" && t.name.startsWith("[CUSTOM] ")) {
+						return {
+							...t,
+							category: "CUSTOM",
+							name: t.name.slice(9),
+						};
+					}
+					return t;
+				});
+				const l = mapped.filter((t) => t.category === "LAYOUT");
+				const b = mapped.filter((t) => t.category === "BUTTON" || t.category === "CUSTOM");
 				setLayouts(l);
 				setButtonTemplates(b);
 
@@ -79,9 +89,26 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 		if (layout && layout.js_content) jsCollector.add(layout.js_content);
 
 		let couponCount = 0;
+		let btnCount = 0;
+		let customCount = 0;
 
-		sortedHotspots.forEach((hs, index) => {
-			const bid = index + 1;
+		sortedHotspots.forEach((hs) => {
+			const tpl = hs.action_type === "LINK" ? null : buttonTemplates.find((t) => t.name === hs.action_type);
+			const isCustom = tpl && tpl.category === "CUSTOM";
+			
+			let className = "";
+			let idStr = "";
+
+			if (isCustom) {
+				customCount++;
+				className = `custom_html-${customCount}`;
+				idStr = customCount.toString();
+			} else {
+				btnCount++;
+				className = `btn-${btnCount}`;
+				idStr = btnCount.toString();
+			}
+
 			const left = ((hs.x / imageWidth) * 100).toFixed(2);
 			const top = ((hs.y / imageHeight) * 100).toFixed(2);
 			const width = ((hs.width / imageWidth) * 100).toFixed(2);
@@ -92,32 +119,102 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 				couponCount++;
 			}
 
+			buttonsOnlyCss += `.${className} { left: ${left}%; top: ${top}%; width: ${width}%; height: ${height}%; position:absolute; }\n`;
+			finalButtonsCss += `.${className} { left: ${left}%; top: ${top}%; width: ${width}%; height: ${height}%; position:absolute; }\n`;
+
 			let btnSnippet = "";
 			if (hs.action_type === "LINK") {
-				btnSnippet = `<a href="${hs.href}" target="${hs.target}" title="${hs.title}" class="event-btn btn-${bid}"></a>`;
+				btnSnippet = `<a href="${hs.href}" target="${hs.target}" title="${hs.title}" class="event-btn btn-${btnCount}"></a>`;
 			} else {
-				const tpl = buttonTemplates.find((t) => t.name === hs.action_type);
 				if (tpl) {
 					const couponIdxStr = couponCount.toString().padStart(2, "0");
-					btnSnippet = tpl.content
-						.replace(/{{HREF}}/g, hs.href)
-						.replace(/{{TITLE}}/g, hs.title)
-						.replace(/{{ID}}/g, bid.toString())
-						.replace(/{{METADATA\.value}}/g, hs.metadata?.value || "")
+					
+					// Replace standard placeholders
+					let contentSnippet = tpl.content;
+					if (isCustom) {
+						contentSnippet = contentSnippet
+							.replace(/btn-{{ID}}/g, `custom_html-${customCount}`)
+							.replace(/custom_html-{{ID}}/g, `custom_html-${customCount}`)
+							.replace(/class=["']custom_html["']/g, `class="custom_html-${customCount}"`);
+					} else {
+						contentSnippet = contentSnippet
+							.replace(/btn-{{ID}}/g, `btn-${btnCount}`);
+					}
+
+					contentSnippet = contentSnippet
+						.replace(/{{HREF}}/g, hs.href || "")
+						.replace(/{{TITLE}}/g, hs.title || "")
+						.replace(/{{ID}}/g, idStr)
 						.replace(/{{COUPON_INDEX}}/g, couponIdxStr)
 						.replace(/BTN-01/g, `BTN-${couponIdxStr}`);
 
-					if (tpl.js_content) jsCollector.add(tpl.js_content);
+					// Dynamically replace any {{METADATA.key}} placeholders in content
+					const metadataRegex = /{{METADATA\.(.*?)}}/g;
+					contentSnippet = contentSnippet.replace(metadataRegex, (_, key) => {
+						const k = key.trim();
+						return hs.metadata && hs.metadata[k] !== undefined ? hs.metadata[k] : "";
+					});
+					
+					btnSnippet = contentSnippet;
+
+					// Collect and replace placeholders in JS logic
+					if (tpl.js_content) {
+						let jsSnippet = tpl.js_content;
+						if (isCustom) {
+							jsSnippet = jsSnippet
+								.replace(/btn-{{ID}}/g, `custom_html-${customCount}`)
+								.replace(/custom_html-{{ID}}/g, `custom_html-${customCount}`);
+						} else {
+							jsSnippet = jsSnippet
+								.replace(/btn-{{ID}}/g, `btn-${btnCount}`);
+						}
+
+						jsSnippet = jsSnippet
+							.replace(/{{HREF}}/g, hs.href || "")
+							.replace(/{{TITLE}}/g, hs.title || "")
+							.replace(/{{ID}}/g, idStr)
+							.replace(/{{COUPON_INDEX}}/g, couponIdxStr)
+							.replace(/BTN-01/g, `BTN-${couponIdxStr}`);
+							
+						jsSnippet = jsSnippet.replace(metadataRegex, (_, key) => {
+							const k = key.trim();
+							return hs.metadata && hs.metadata[k] !== undefined ? hs.metadata[k] : "";
+						});
+						jsCollector.add(jsSnippet);
+					}
+
+					// Collect and replace placeholders in CSS content
+					if (tpl.css_content) {
+						let cssSnippet = tpl.css_content;
+						if (isCustom) {
+							cssSnippet = cssSnippet
+								.replace(/btn-{{ID}}/g, `custom_html-${customCount}`)
+								.replace(/custom_html-{{ID}}/g, `custom_html-${customCount}`)
+								.replace(/\.custom_html\b/g, `.custom_html-${customCount}`);
+						} else {
+							cssSnippet = cssSnippet
+								.replace(/btn-{{ID}}/g, `btn-${btnCount}`);
+						}
+
+						cssSnippet = cssSnippet
+							.replace(/{{ID}}/g, idStr)
+							.replace(/{{COUPON_INDEX}}/g, couponIdxStr);
+							
+						cssSnippet = cssSnippet.replace(metadataRegex, (_, key) => {
+							const k = key.trim();
+							return hs.metadata && hs.metadata[k] !== undefined ? hs.metadata[k] : "";
+						});
+						
+						buttonsOnlyCss += `\n/* Component Styling for Hotspot #${className} */\n${cssSnippet}\n`;
+						finalButtonsCss += `\n/* Component Styling for Hotspot #${className} */\n${cssSnippet}\n`;
+					}
 				} else {
 					btnSnippet = `<!-- Template ${hs.action_type} not found -->`;
 				}
 			}
 
 			buttonsOnlyHtml += `${btnSnippet}\n`;
-			buttonsOnlyCss += `.btn-${bid} { left: ${left}%; top: ${top}%; width: ${width}%; height: ${height}%; position:absolute; }\n`;
-
 			finalButtonsHtml += `  ${btnSnippet}\n`;
-			finalButtonsCss += `.btn-${bid} { left: ${left}%; top: ${top}%; width: ${width}%; height: ${height}%; position:absolute; }\n`;
 		});
 
 		if (!layout) {
@@ -149,7 +246,7 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 		} else if (stylesPlaceholderRegex.test(finalCss)) {
 			finalCss = finalCss.replace(stylesPlaceholderRegex, finalButtonsCss.trim());
 		} else {
-			finalCss = finalCss.trim() + `\n\n/* Automatically injected button styles */\n${finalButtonsCss.trim()}`;
+			finalCss = finalCss.trim() + `\n\n/* Automatically injected button and component styles */\n${finalButtonsCss.trim()}`;
 		}
 
 		const finalJs = Array.from(jsCollector).join("\n\n");

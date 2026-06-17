@@ -23,8 +23,23 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 
 	useEffect(() => {
 		const fetchButtonTemplates = async () => {
-			const { data } = await supabase.from("master_templates").select("*").eq("category", "BUTTON").eq("service", currentService);
-			setButtonTemplates(data || []);
+			const { data } = await supabase
+				.from("master_templates")
+				.select("*")
+				.eq("category", "BUTTON")
+				.eq("service", currentService);
+			
+			const mapped = (data || []).map((t) => {
+				if (t.name.startsWith("[CUSTOM] ")) {
+					return {
+						...t,
+						category: "CUSTOM",
+						name: t.name.slice(9),
+					};
+				}
+				return t;
+			});
+			setButtonTemplates(mapped);
 		};
 		fetchButtonTemplates();
 	}, [currentService]);
@@ -72,13 +87,60 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 								<label>Action Type (Template)</label>
 								<select value={hotspot.action_type} onChange={(e) => updateHotspot({ ...hotspot, action_type: e.target.value })}>
 									<option value="">-- 선택하세요 --</option>
+									<option value="LINK">기본 링크 (LINK)</option>
 									{buttonTemplates.map((t) => (
 										<option key={t.id} value={t.name}>
-											{t.name}
+											{t.name} ({t.category})
 										</option>
 									))}
 								</select>
 							</div>
+
+							{(() => {
+								const selectedTemplate = buttonTemplates.find((t) => t.name === hotspot.action_type);
+								if (!selectedTemplate) return null;
+								
+								// Find metadata keys
+								const regex = /{{METADATA\.(.*?)}}/g;
+								const keys: string[] = [];
+								const searchIn = [
+									selectedTemplate.content || "",
+									selectedTemplate.css_content || "",
+									selectedTemplate.js_content || ""
+								].join("\n");
+								let match;
+								while ((match = regex.exec(searchIn)) !== null) {
+									const key = match[1].trim();
+									if (!keys.includes(key)) {
+										keys.push(key);
+									}
+								}
+								
+								if (keys.length === 0) return null;
+								
+								return (
+									<div className="metadata-fields" style={{ borderLeft: "2px solid var(--accent-color)", paddingLeft: "12px", marginBottom: "1rem" }}>
+										<div style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--accent-color)", marginBottom: "8px", textTransform: "uppercase" }}>Template Variables</div>
+										{keys.map((key) => (
+											<div className="form-group" key={key}>
+												<label>{key}</label>
+												<input
+													type="text"
+													value={hotspot.metadata?.[key] || ""}
+													onChange={(e) => {
+														const updatedMetadata = {
+															...(hotspot.metadata || {}),
+															[key]: e.target.value,
+														};
+														updateHotspot({ ...hotspot, metadata: updatedMetadata });
+													}}
+													placeholder={`Value for {{METADATA.${key}}}`}
+												/>
+											</div>
+										))}
+									</div>
+								);
+							})()}
 
 							<div className="form-group">
 								<label>Title Text (Alt)</label>

@@ -18,7 +18,7 @@ export interface BoxRect {
   height: number;
 }
 
-export type TemplateCategory = 'LAYOUT' | 'BUTTON';
+export type TemplateCategory = 'LAYOUT' | 'BUTTON' | 'CUSTOM';
 
 export interface Template {
   id: string;
