@@ -308,7 +308,7 @@ const TemplateManager: React.FC = () => {
 								<textarea
 									name="content"
 									rows={8}
-									placeholder={'<div class="event-custom custom_html-{{ID}}">\n  <iframe src="https://www.youtube.com/embed/{{METADATA.youtube_id}}" width="100%" height="100%" frameborder="0"></iframe>\n</div>'}
+									placeholder={'<iframe src="https://www.youtube.com/embed/{{METADATA.youtube_id}}" width="100%" height="100%" frameborder="0"></iframe>'}
 									value={formData.content || ""}
 									onChange={handleInputChange}
 									required

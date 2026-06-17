@@ -155,7 +155,9 @@ const CodeGenerator: React.FC<CodeGeneratorProps> = ({
 						return hs.metadata && hs.metadata[k] !== undefined ? hs.metadata[k] : "";
 					});
 					
-					btnSnippet = contentSnippet;
+					btnSnippet = isCustom 
+						? `<div class="custom_html-${customCount}">\n  ${contentSnippet}\n</div>` 
+						: contentSnippet;
 
 					// Collect and replace placeholders in JS logic
 					if (tpl.js_content) {
